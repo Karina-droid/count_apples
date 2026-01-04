@@ -3,12 +3,16 @@ import ui
 import sound
 import random
 import math
+import statistics
 
 
 apples = ['emj:Green_Apple', 'emj:Red_Apple']
-min_apple_size = 35
-max_apple_size = 65
-one_apple_space = 80
+min_apple_size = 35.0
+max_apple_size = 65.0
+one_apple_space = 75.0
+tile_size = 50.0
+margin_indent = 100.0
+
 
 
 class Tile(SpriteNode):
@@ -19,25 +23,56 @@ class Tile(SpriteNode):
 		self.title_label = LabelNode(str(number), font=button_font, color='black', position=(0, 1), parent=self)
 		
 
+
 class ApplePile(Node):
 	def __init__(self, *args, **kwargs): 
 		Node.__init__(self, *args, **kwargs)
+		self.apples_number = random.choice([1,2])
 		self.apples = []
-		circle = ui.Path.oval(0, 0, one_apple_space, one_apple_space)
+		self.diameter = self.apples_number * one_apple_space * 0.75
+		self.highlight_pile('green')
+		
+	
+	def highlight_pile(self, color):
+		circle = ui.Path.oval(0, 0, self.diameter,  			
+																		self.diameter)
 		circle.line_width = 3
-		self.circle = ShapeNode(circle, stroke_color='black', fill_color="B1DEE1", parent=self)
-		self.choose_apple()
+		self.circle = ShapeNode(circle, stroke_color='green', fill_color='B1DEE1', parent=self)
+		#self.circle.position = 0.0, 0.0
+		if color == 'green':
+			sound.play_effect('8ve:8ve-beep-hightone')
+		else:
+			sound.play_effect('game:Error')
 		
-	#randomly choose red/green apple, position it inside its circle
-	def choose_apple(self):
-		apple = SpriteNode(apples[random.choice([0,1])], parent=self)
-		r = random.uniform(apple.size.w/2, self.circle.size.w/2-apple.size.w/2)
-		theta = random.uniform(0, 360)
-		apple_size = random.uniform(min_apple_size, max_apple_size)
-		apple.size = (apple_size, apple_size)
-		apple.position = r*math.cos(theta), r*math.sin(theta)
-		self.apples.append(apple)
 		
+		
+	#randomly choose the place of apple pile on the screen
+	#def place_apple(self, scr_width, scr_height):
+		
+		
+		
+	def calc_pos(self):
+		position_x, position_y = 0.0, 0.0
+		for a in self.apples:
+			position_x = a.position.x
+			position_y += a.position.y
+		position_x = position_x/self.number
+		position_y = position_y/self.number
+		self.position.x += position_x
+		self.position.y += position_y
+	
+		
+	''' def	if_touched(self, touch_loc):
+		if ((touch_loc.x < self.apples[0].position.x + one_apple_space) and
+				(touch_loc.x > self.apples[0].position.x - one_apple_space)):
+			if ((touch_loc.y < self.apples[0].position.y + one_apple_space) and
+					(touch_loc.y > self.apples[0].position.y - one_apple_space)):
+				return True
+		else: 
+			return False '''
+			
+	
+				
 		
 class MyScene(Scene):
 	def __init__(self, max_tile, *args, **kwargs):
@@ -45,6 +80,7 @@ class MyScene(Scene):
 		self.cur_number = 0
 		self.max_tile = max_tile
 		self.tiles = []
+		self.piles = []
 	
 	def setup(self):
 		self.background_color = "B1DEE1"
@@ -56,9 +92,8 @@ class MyScene(Scene):
 			tile.size = (50.0, 50.0)
 			tile.position = (tile.size.w + (i-1)*tile.size.w + tab, self.size.h - tile.size.h)	
 			self.tiles.append(tile)
-		pile = ApplePile(parent=self)
-		pile.position = 100, 100
-
+		self.place_pile()
+		
 	
 	def touch_began(self, touch):
 		touch_loc = self.point_from_scene(touch.location)
@@ -67,14 +102,36 @@ class MyScene(Scene):
 			if touch_loc in t.frame:
 				sound.play_effect('8ve:8ve-tap-resonant')
 				t.texture = Texture('pzl:Button2')
-				t.size = (50.0, 50.0)
+				t.size = (tile_size, tile_size)
 				self.cur_number = t.number
 				#unhighlight all other buttons
 				for t in self.tiles:
 					if touch_loc not in t.frame:
 						t.texture = Texture('pzl:Button1')
-						t.size = (50.0, 50.0)
-
+						t.size = (tile_size, tile_size)
+			''' if (self.cur_number != 0):
+				for p in self.piles:
+					if p.if_touched(touch_loc):
+						if (p.number == self.cur_number):
+							p.highlight_pile('green')
+						else:
+							p.highlight_pile('red') '''
+							
+							
+	def place_pile(self):
+		fail = 0
+		while fail < 20:
+			x = random.randrange(margin_indent, self.size.x - margin_indent)
+			y = random.randrange(margin_indent, self.size.y - margin_indent)
+			for p in self.piles:
+				if ((abs(p.position.x - x) <  * one_apple_space) or (abs(p.position.y - y) < 10 * one_apple_space)):
+					fail += 1
+					continue
+			pile = ApplePile(parent=self)
+			pile.position = x, y
+			self.piles.append(pile)
+			print(fail)
+			
 						
 if __name__ == '__main__':
 	run(MyScene(2))
