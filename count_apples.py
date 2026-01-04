@@ -11,7 +11,7 @@ min_apple_size = 35.0
 max_apple_size = 65.0
 one_apple_space = 75.0
 tile_size = 50.0
-margin_indent = 100.0
+margin_indent = 120.0
 
 
 
@@ -92,7 +92,7 @@ class MyScene(Scene):
 			tile.size = (50.0, 50.0)
 			tile.position = (tile.size.w + (i-1)*tile.size.w + tab, self.size.h - tile.size.h)	
 			self.tiles.append(tile)
-		self.place_pile()
+		self.place_piles()
 		
 	
 	def touch_began(self, touch):
@@ -118,20 +118,22 @@ class MyScene(Scene):
 							p.highlight_pile('red') '''
 							
 							
-	def place_pile(self):
+	def place_piles(self):
 		fail = 0
-		while fail < 20:
+		while fail < 200:
+			collided = False
 			x = random.randrange(margin_indent, self.size.x - margin_indent)
 			y = random.randrange(margin_indent, self.size.y - margin_indent)
 			for p in self.piles:
-				if ((abs(p.position.x - x) <  * one_apple_space) or (abs(p.position.y - y) < 10 * one_apple_space)):
+				if ((abs(p.position.x - x) <  one_apple_space) or (abs(p.position.y - y) < one_apple_space)):
 					fail += 1
-					continue
-			pile = ApplePile(parent=self)
-			pile.position = x, y
-			self.piles.append(pile)
-			print(fail)
-			
+					collided = True
+			if not collided:
+				pile = ApplePile(parent=self)
+				pile.position = x, y
+				self.piles.append(pile)
+				fail = 0
+				
 						
 if __name__ == '__main__':
 	run(MyScene(2))
