@@ -4,14 +4,16 @@ import sound
 import random
 import math
 import statistics
+A = Action
 
 
 apples = ['emj:Green_Apple', 'emj:Red_Apple']
+scr_height = 820.0
 min_apple_size = 35.0
 max_apple_size = 65.0
 one_apple_space = 60.0
 tile_size = 50.0
-margin_indent = 120.0
+margin_indent = 80.0
 
 
 
@@ -29,7 +31,13 @@ class Apple(SpriteNode):
 		SpriteNode.__init__(self, random.choice(apples), *args, **kwargs)
 		self.r = r
 		self.angle = angle
-
+		
+	
+	def fall(self):
+		fall_time = random.uniform(1.5, 2.5)
+		actions = [A.move_by(0, -(scr_height), fall_time), A.remove()]
+		self.run_action(A.sequence(actions))
+			
 
 
 class ApplePile(Node):
@@ -38,20 +46,28 @@ class ApplePile(Node):
 		self.apples_number = random.choice([1,2])
 		self.apples = []
 		self.diameter = self.apples_number * max_apple_size
+		self.tapped = False
 		for i in range(self.apples_number):
 			self.place_apple()
 		
 	
 	def highlight_pile(self, color):
-		circle = ui.Path.oval(0, 0, self.diameter,  			
-																		self.diameter)
-		circle.line_width = 3
-		self.circle = ShapeNode(circle, stroke_color=color, fill_color='B1DEE1', parent=self)
-		self.circle.blend_mode = 2
-		if color == 'green':
-			sound.play_effect('8ve:8ve-beep-hightone')
+		if color != None:
+			self.tapped = True
+			circle = ui.Path.oval(0, 0, self.diameter,  			
+																				self.diameter)
+			circle.line_width = 3
+			self.circle = ShapeNode(circle, stroke_color=color, fill_color='B1DEE1', parent=self)
+			self.circle.blend_mode = 2
+			if color == 'green':
+				sound.play_effect('8ve:8ve-beep-hightone')
+			elif color == 'red':
+				sound.play_effect('game:Error')
 		else:
-			sound.play_effect('game:Error')
+			try:
+				self.circle.run_action(A.fade_to(0, 1))
+			except AttributeError:
+				return
 	
 		
 	def place_apple(self):
@@ -59,14 +75,15 @@ class ApplePile(Node):
 		r = random.uniform(0, self.diameter/2 - size/2)
 		angle = random.uniform(0, 2*math.pi)
 		for apple in self.apples:
-			while (math.pi * apple.r * (angle/math.pi) < max_apple_size):
-				angle = random.uniform(0, 2*math.pi)
+			for i in range(1000):
+				if (math.pi * apple.r * (angle/math.pi) < 1.5*max_apple_size):
+					angle = random.uniform(0, 2*math.pi)
 		apple = Apple(r, angle, parent=self)
 		apple.size = size, size
 		apple.position = r*math.cos(angle), r*math.sin(angle)
 		self.apples.append(apple)
-		#self.highlight_pile('green')
 				
+		
 		
 class MyScene(Scene):
 	def __init__(self, max_tile, *args, **kwargs):
@@ -75,6 +92,8 @@ class MyScene(Scene):
 		self.max_tile = max_tile
 		self.tiles = []
 		self.piles = []
+		self.hearts = []
+	
 	
 	def setup(self):
 		self.background_color = "B1DEE1"
@@ -87,6 +106,7 @@ class MyScene(Scene):
 			tile.position = (tile.size.w + (i-1)*tile.size.w + tab, self.size.h - tile.size.h)	
 			self.tiles.append(tile)
 		self.place_piles()
+		self.place_hearts()
 		
 	
 	def touch_began(self, touch):
@@ -107,10 +127,12 @@ class MyScene(Scene):
 		if (self.cur_number != 0):
 			for p in self.piles:
 				if (abs(touch_loc.x - p.position.x) < p.diameter/2) and (abs(touch_loc.y - p.position.y) < p.diameter/2):
-					if (p.apples_number == self.cur_number):
-						p.highlight_pile('green')
-					else:
-						p.highlight_pile('red')
+					if p.tapped == False:
+						if (p.apples_number == self.cur_number):
+							p.highlight_pile('green')
+						else:
+							p.highlight_pile('red')
+							self.wrong()
 							
 							
 	def place_piles(self):
@@ -128,8 +150,35 @@ class MyScene(Scene):
 				pile.position = x, y
 				self.piles.append(pile)
 				fail = 0
-
-								
+				
+				
+	def place_hearts(self):
+		for i in range(3):
+			heart = SpriteNode('emj:Heart', position=(self.size.x - margin_indent - i*50, 
+																									self.size.y - margin_indent/2), size=(45, 45), parent=self)
+			self.hearts.append(heart)
+			
+	
+	def wrong(self):
+		heart = self.hearts.pop()
+		if not self.hearts:
+			self.loose()
+		heart.texture = Texture('emj:Heart_Broken')
+		heart.size = (45, 45)
+		self.run_action(Action.wait(2))
+		heart.run_action(Action.fade_to(0, 1.5))
+		sound.play_effect('game:Clank')
+		
+		
+	def loose(self):
+		self.run_action(A.wait(10))
+		for pile in self.piles:
+			pile.highlight_pile(None)
+		for pile in self.piles:
+			for apple in pile.apples: 
+				apple.fall()
+				
+					
 						
 if __name__ == '__main__':
 	run(MyScene(2))
